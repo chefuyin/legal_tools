@@ -10,7 +10,8 @@ class LawLibTool():
         self.law_title_xpath = '//div[@class="index_605graycon clear2"]/ul/li/a/@title'
         self.law_content_xpath ='//div[@class="content_view"]/text()'
         self.law_source_xpath ='//li[@class="fglys"]/text()'
-        self.save_path ='E:/PycharmProjects/legal_tools/lawlib_tool/law/'
+        # self.save_path ='E:/PycharmProjects/legal_tools/lawlib_tool/law/'
+        self.save_path ='E:\PycharmProjects\legal_tools\legal_tools\lawlib_tool\law'
 
     def main(self):
         req = self.site_req_by_get(self.url)
@@ -20,14 +21,11 @@ class LawLibTool():
         for full_url,title in zip(full_urls,titles):
             law_req = self.site_req_by_get(full_url)
             law_content= self.parse_main_site_req(law_req,self.law_content_xpath)
-            save_path=self.save_path+title+'.txt'
+            save_path=self.save_path+'\\'+title+'.txt'
             for line in law_content:
                 new_line= self.remove_tags(line)
                 self.write_txt(save_path,new_line)
             self.write_txt(save_path,'url:'+full_url)
-
-
-
 
         #     for line in law_content:
         #         with open(title + '.txt', 'a+') as file:
