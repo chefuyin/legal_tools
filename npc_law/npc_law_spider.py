@@ -1,6 +1,7 @@
 import random,requests,re
 import lxml.html
 from lxml.html import etree
+import time
 
 
 
@@ -32,17 +33,17 @@ class NpcLawSpider():
             'Cache-Control': 'max-age=0',
             "Connection": "keep-alive",
             "User-Agent": user_agent,
-            'Referer': 'http://law.npc.gov.cn/FLFG/getAllList.action'
+            'Referer': 'http://law.npc.gov.cn/FLFG/getAllList.action',
         }
         return headers
 
     #generate list page requests data,such as page pagesize
     def list_page_request_data(self,page):
         data = {
-            'pagesize': '50',
+            'pagesize': '20',
             'ispage': '1',
-            'pageCount': '24',
-            'curPage': page,
+            'pageCount': '34',
+            'curPage': str(page),
             'SFYX': '有效',
             'zlsxid': '02',
             'fenleigengduo': '',
@@ -50,8 +51,8 @@ class NpcLawSpider():
             'zdjg': '',
             'txtid': '',
             'resultSearch': 'false',
-            'lastStrWhere': '法律',
-            'keyword': '法律',
+            'lastStrWhere': '',
+            'keyword': '条例',
         }
         return data
 
@@ -61,8 +62,11 @@ class NpcLawSpider():
         headers=self.request_headers()
         try:
             url = self.request_url
-            html = requests.post(url, headers=headers, data=data,timeout=20).text
+            req = requests.post(url, headers=headers, data=data)
+            print(req.status_code,req.headers)
+            html=req.text#,timeout=20
             # print html
+
             return html
         except Exception as e:
             print(Exception, e)
@@ -211,12 +215,26 @@ class NpcLawSpider():
 
 if __name__== '__main__':
     a=NpcLawSpider()
-    url = 'http://law.npc.gov.cn/FLFG/flfgByID.action?flfgID=36698822'
-    html=a.law_content_html(url)
-    # print(html)
-    rule=a.parse_law_info_rule()
-    lawinfo=a.law_info(html,rule)
-    print(lawinfo)
+    for page in (4,16):
+        req_data=a.list_page_request_data(page)
+        html=a.list_page(req_data)
+        rule=a.parse_law_id_rule()
+        ids=a.parse_html(html,rule)
+        id_list=a.parse_id(ids)
+        for id in id_list:
+            print(a.merge_law_url(id))
+        print('*'*20)
+        # time.sleep(5)
+
+
+
+
+    # url = 'http://law.npc.gov.cn/FLFG/flfgByID.action?flfgID=36698822'
+    # html=a.law_content_html(url)
+    # # print(html)
+    # rule=a.parse_law_info_rule()
+    # lawinfo=a.law_info(html,rule)
+    # print(lawinfo)
 
     # for i in range(1,3):
     #     result=a.get_request(str(i))
