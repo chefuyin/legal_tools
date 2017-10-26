@@ -33,7 +33,7 @@ class NpcLawSpider():
             'Cache-Control': 'max-age=0',
             "Connection": "keep-alive",
             "User-Agent": user_agent,
-            'Referer': 'http://law.npc.gov.cn/FLFG/getAllList.action',
+            'Referer': '',
         }
         return headers
 
@@ -42,17 +42,17 @@ class NpcLawSpider():
         data = {
             'pagesize': '20',
             'ispage': '1',
-            'pageCount': '34',
+            'pageCount': '501',
             'curPage': str(page),
             'SFYX': '有效',
-            'zlsxid': '02',
+            'zlsxid': '03',
             'fenleigengduo': '',
             'bmflid': '',
             'zdjg': '',
             'txtid': '',
             'resultSearch': 'false',
             'lastStrWhere': '',
-            'keyword': '条例',
+            'keyword': '',
         }
         return data
 
@@ -65,7 +65,7 @@ class NpcLawSpider():
             req = requests.post(url, headers=headers, data=data)
             print(req.status_code,req.headers)
             html=req.text#,timeout=20
-            # print html
+            print (html)
 
             return html
         except Exception as e:
@@ -74,7 +74,7 @@ class NpcLawSpider():
 
     #set law id parse rule from law list page
     def parse_law_id_rule(self):
-        rule='//td[@class="td"]/a/@href'
+        rule='//td[@class="td"]/a[1]/@href'#抓取第一个a标签，因为会重复
         return rule
 
     #parse html and return result
@@ -86,7 +86,9 @@ class NpcLawSpider():
     def parse_id(self,id_list):
         pattern=re.compile(r"'(.*?)'")
         new_id_list=[]
+
         for i in id_list:
+            # print(i)
             match= pattern.findall(i)
             if match:
                 id=match[0]
@@ -215,16 +217,19 @@ class NpcLawSpider():
 
 if __name__== '__main__':
     a=NpcLawSpider()
-    for page in (4,16):
+    for page in range(501,502):
+        print(page)
         req_data=a.list_page_request_data(page)
         html=a.list_page(req_data)
         rule=a.parse_law_id_rule()
         ids=a.parse_html(html,rule)
+        print(ids)
         id_list=a.parse_id(ids)
+        print(id_list)
         for id in id_list:
             print(a.merge_law_url(id))
         print('*'*20)
-        # time.sleep(5)
+        time.sleep(5)
 
 
 
