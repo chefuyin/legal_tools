@@ -42,8 +42,9 @@ class NpcLawSpider():
         rule1='//div[@class="nav"]/a/@href'
         rule2='//a[@class="relative"]/div/span/@onclick'
         rule3='//ul[@class="threecloumntitle"]/li/a/@href'
+        rule_list=[rule1,rule2,rule3]
 
-        return rule3
+        return rule_list
 
 
     #generate request headers
@@ -246,9 +247,10 @@ if __name__== '__main__':
     a=NpcLawSpider()
     html=a.index_page()
     print(html)
-    rule=a.parse_index_page_rule()
-    result=a.parse_html(html,rule)
-    print(result)
+    rules=a.parse_index_page_rule()
+    for rule in rules:
+        result=a.parse_html(html,rule)
+        print(result)
 
 
     # for page in range(501,502):
