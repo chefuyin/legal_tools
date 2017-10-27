@@ -2,6 +2,7 @@ import random,requests,re
 import lxml.html
 from lxml.html import etree
 import time
+import pyquery
 
 
 
@@ -9,7 +10,8 @@ class NpcLawSpider():
     def __init__(self):
         self.request_url='http://law.npc.gov.cn/FLFG/getAllList.action'
         self.half_law_url='http://law.npc.gov.cn/FLFG/flfgByID.action?flfgID='
-
+        self.index='http://law.npc.gov.cn/FLFG/'
+        self.check_url='http://law.npc.gov.cn/FLFG/getAllList.action?SFYX=%E6%9C%89%E6%95%88&zlsxid=11&bmflid=&zdjg=&txtid=&resultSearch=false&lastStrWhere=&keyword=&pagesize=50'
     # 导入数据集并随机获取一个User-Agent
     def random_user_agent(self):
         user_agent_list = []
@@ -18,6 +20,31 @@ class NpcLawSpider():
             user_agent_list.append(date_line.replace('\n', ''))
         user_agent = random.choice(user_agent_list)
         return user_agent
+
+    # def index_page_data(self):
+    #     'goMore(zlsx, bmfl, zdjg, txtid)'
+    #
+
+    def index_page(self):
+        user_agent = self.random_user_agent()
+        '''参数引入及头信息'''
+        if len(user_agent) < 10:
+            user_agent = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:39.0) Gecko/20100101 Firefox/39.0'
+        # 此处修改头字段,
+        headers = {
+            "User-Agent": user_agent,
+            }
+        html=requests.get(self.index,headers=headers)
+        if html.status_code==200:
+            return html.text
+
+    def parse_index_page_rule(self):
+        rule1='//div[@class="nav"]/a/@href'
+        rule2='//a[@class="relative"]/div/span/@onclick'
+        rule3='//ul[@class="threecloumntitle"]/li/a/@href'
+
+        return rule3
+
 
     #generate request headers
     def request_headers(self):
@@ -42,7 +69,7 @@ class NpcLawSpider():
         data = {
             'pagesize': '20',
             'ispage': '1',
-            'pageCount': '501',
+            'pageCount': '500',
             'curPage': str(page),
             'SFYX': '有效',
             'zlsxid': '03',
@@ -217,19 +244,26 @@ class NpcLawSpider():
 
 if __name__== '__main__':
     a=NpcLawSpider()
-    for page in range(501,502):
-        print(page)
-        req_data=a.list_page_request_data(page)
-        html=a.list_page(req_data)
-        rule=a.parse_law_id_rule()
-        ids=a.parse_html(html,rule)
-        print(ids)
-        id_list=a.parse_id(ids)
-        print(id_list)
-        for id in id_list:
-            print(a.merge_law_url(id))
-        print('*'*20)
-        time.sleep(5)
+    html=a.index_page()
+    print(html)
+    rule=a.parse_index_page_rule()
+    result=a.parse_html(html,rule)
+    print(result)
+
+
+    # for page in range(501,502):
+    #     print(page)
+    #     req_data=a.list_page_request_data(page)
+    #     html=a.list_page(req_data)
+    #     rule=a.parse_law_id_rule()
+    #     ids=a.parse_html(html,rule)
+    #     print(ids)
+    #     id_list=a.parse_id(ids)
+    #     print(id_list)
+    #     for id in id_list:
+    #         print(a.merge_law_url(id))
+    #     print('*'*20)
+    #     time.sleep(5)
 
 
 
