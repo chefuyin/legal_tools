@@ -1,6 +1,7 @@
 import random,requests,re
 import lxml.html
 from lxml.html import etree
+from bs4 import BeautifulSoup
 import time
 import pyquery
 
@@ -11,7 +12,11 @@ class NpcLawSpider():
         self.request_url='http://law.npc.gov.cn/FLFG/getAllList.action'
         self.half_law_url='http://law.npc.gov.cn/FLFG/flfgByID.action?flfgID='
         self.index='http://law.npc.gov.cn/FLFG/'
+        self.constitution_url='http://law.npc.gov.cn/FLFG/index/xianfamore.jsp'
+        self.criminal_law_url='http://law.npc.gov.cn/FLFG/index/xingfamore.jsp'
+        self.local_regulation_url='http://law.npc.gov.cn/FLFG/ksjsCateGroup.action'
         self.check_url='http://law.npc.gov.cn/FLFG/getAllList.action?SFYX=%E6%9C%89%E6%95%88&zlsxid=11&bmflid=&zdjg=&txtid=&resultSearch=false&lastStrWhere=&keyword=&pagesize=50'
+
     # 导入数据集并随机获取一个User-Agent
     def random_user_agent(self):
         user_agent_list = []
@@ -21,11 +26,7 @@ class NpcLawSpider():
         user_agent = random.choice(user_agent_list)
         return user_agent
 
-    # def index_page_data(self):
-    #     'goMore(zlsx, bmfl, zdjg, txtid)'
-    #
-
-    def index_page(self):
+    def common_headers(self):
         user_agent = self.random_user_agent()
         '''参数引入及头信息'''
         if len(user_agent) < 10:
@@ -33,22 +34,11 @@ class NpcLawSpider():
         # 此处修改头字段,
         headers = {
             "User-Agent": user_agent,
-            }
-        html=requests.get(self.index,headers=headers)
-        if html.status_code==200:
-            return html.text
+        }
+        return headers
 
-    def parse_index_page_rule(self):
-        rule1='//div[@class="nav"]/a/@href'
-        rule2='//a[@class="relative"]/div/span/@onclick'
-        rule3='//ul[@class="threecloumntitle"]/li/a/@href'
-        rule_list=[rule1,rule2,rule3]
-
-        return rule_list
-
-
-    #generate request headers
-    def request_headers(self):
+    # generate request headers,just for request the law list by province number , law type number etc.
+    def special_request_headers(self):
         user_agent = self.random_user_agent()
         '''参数引入及头信息'''
         if len(user_agent) < 10:
@@ -64,6 +54,92 @@ class NpcLawSpider():
             'Referer': '',
         }
         return headers
+
+    def index_page(self):
+        headers = self.common_headers()
+        html=requests.get(self.index,headers=headers)
+        if html.status_code==200:
+            return html.text
+
+    def parse_index_page_law(self,html):
+        soup=BeautifulSoup(html,'lxml')
+        spans=soup.find_all('span',class_="blue")
+        for span in spans:
+            datas = {}
+            if span.get_text()=='宪法':
+                pass
+            elif span.get_text()=='刑法':
+                pass
+            else:
+                ptn=re.compile(r"'(.*?)'")
+                results=ptn.findall(span["onclick"])
+                types=['zlsxid', 'bmflid', 'zdjg', 'txtid']
+                data={}
+                for type,result in zip(types,results):
+                    dict={
+                        type:result
+                    }
+                    data.update(dict)
+                law_name=self.translate_law_name(span.get_text())
+                datas.update({law_name:data})
+                print(datas)
+            # print(xianfa)
+
+    def translate_law_name(self,chinese_law_name):
+        name_dict={
+            '宪法相关法':'constitutional_law',
+            '民法商法':'civil_commercial_law',
+            '行政法': 'administrative_law',
+            '经济法': 'economic_law',
+            '社会法': 'social_law',
+            '诉讼与非诉讼程序法': 'procedure_law',
+            '有关法律问题的决定': 'decisions_on_law',
+            '关于修改批准废止法律的决定': 'decision_on_amending',
+            '关于批准缔结条约的决定': 'decision_on_treaty',
+        }
+        english_law_name='other_law'
+        for k,v in name_dict.items():
+            if chinese_law_name==k:
+                english_law_name=v
+        return english_law_name
+
+    #get the city number in the index page and use the number to get the number of regulations in this province
+    #return a dict of provinces
+    def parse_provinces(self,html):
+        soup=BeautifulSoup(html,'lxml')
+        results=soup.select('ul[class="threecloumntitle"] > li > a')
+        province_num_dict={}
+        for result in results:
+            # print(result)
+            href=result["href"]
+            ptn=re.compile(r"'(.*?)'")
+            province_num=ptn.findall(href)[-1]
+            province_name=self.translate_province_name(result.get_text())
+            data={province_name:province_num}
+            province_num_dict.update(data)
+        return province_num_dict
+
+    #translate Chinese province name into english
+    def translate_province_name(self,chinese_province_name):
+        dict={
+            '北京':'Beijing','天津': 'Tianjin','河北': 'Hebei',
+            '山西': 'Shanxi','内蒙古': 'InnerMongol','辽宁': 'Liaoning',
+            '吉林': 'Jilin','黑龙江': 'Heilongjiang','上海': 'Shanghai',
+            '江苏': 'Jiangsu','浙江': 'Zhejiang', '安徽': 'Anhui',
+            '福建': 'Fujian','江西': 'Jiangxi','山东': 'Shandong',
+            '河南': 'Henan', '湖北': 'Hubei', '湖南': 'Hunan',
+            '广东': 'Guangdong', '广西': 'Guangxi', '海南': 'Hainan',
+            '重庆': 'Chongqing', '四川': 'Sichuan', '贵州': 'Guizhou',
+            '云南': 'Yunnan', '西藏': 'Tibet', '陕西': 'Shaanxi',
+            '甘肃': 'Gansu', '青海': 'Qinghai', '宁夏': 'Ningxia',
+            '新疆': 'Xinjiang'
+        }
+        english_province_name=''
+        for k,v in dict.items():
+            if chinese_province_name==k:
+                english_province_name=v
+        return english_province_name
+
 
     #generate list page requests data,such as page pagesize
     def list_page_request_data(self,page):
@@ -84,10 +160,38 @@ class NpcLawSpider():
         }
         return data
 
-    #input page and request data to get list page,
+    #request data for getting the number of every city's regulations
+    def local_regulation_request_data(self,txtid,keyword=None,zlsxid=None,bmflid=None,zdjg=None):
+        data={
+        'keyword':keyword,
+        'zlsxid':zlsxid,
+        'bmflid':bmflid,
+        'zdjg':zdjg,
+        'txtid':str(txtid),
+        }
+        return data
+
+    #parse local regulation number and use the number to calculate the total page in request functions
+    def parse_local_regulation_number_rule(self):
+        rule='//span[@id="resultCount_span"]/text()'
+        return rule
+
+
+    #get the number of local regulations
+    def local_regulation_number(self,province_num):
+        url=self.local_regulation_url
+        headers = self.common_headers()
+        data=self.local_regulation_request_data(province_num)
+        html = requests.post(url, headers=headers,data=data)
+        if html.status_code == 200:
+            return html.text
+
+
+
+    #input page and request data to get list page
     def list_page(self,data):
         data=data
-        headers=self.request_headers()
+        headers=self.special_request_headers()
         try:
             url = self.request_url
             req = requests.post(url, headers=headers, data=data)
@@ -174,7 +278,7 @@ class NpcLawSpider():
     # it's a dict, be careful,easy to write in database
     def law_info(self,html,rule):
         law_info=self.parse_html(html,rule)#get table
-        law_info_dict = self.translate_to_english(law_info)
+        law_info_dict = self.translate_law_info(law_info)
         return law_info_dict
 
     #parse content,it's diffrent from others,as there are many <a> elements in the content
@@ -191,7 +295,7 @@ class NpcLawSpider():
         return law_content_lines
 
     # parse law information from law content page
-    def translate_to_english(self,text_list):
+    def translate_law_info(self,text_list):
         replace_words = {
             '资料属性：': 'file_type',
             '部门分类：': 'classification',
@@ -246,11 +350,11 @@ class NpcLawSpider():
 if __name__== '__main__':
     a=NpcLawSpider()
     html=a.index_page()
-    print(html)
-    rules=a.parse_index_page_rule()
-    for rule in rules:
-        result=a.parse_html(html,rule)
-        print(result)
+    # print(html)
+    # a.parse_index_page_law(html)
+    result=a.parse_provinces(html)
+    print(result)
+
 
 
     # for page in range(501,502):
