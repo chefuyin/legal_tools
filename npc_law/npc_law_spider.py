@@ -4,6 +4,7 @@ from lxml.html import etree
 from bs4 import BeautifulSoup
 import time
 import pyquery
+import json
 
 
 
@@ -16,7 +17,7 @@ class NpcLawSpider():
         self.criminal_law_url='http://law.npc.gov.cn/FLFG/index/xingfamore.jsp'
         self.local_regulation_url='http://law.npc.gov.cn/FLFG/ksjsCateGroup.action'
         self.check_url='http://law.npc.gov.cn/FLFG/getAllList.action?SFYX=%E6%9C%89%E6%95%88&zlsxid=11&bmflid=&zdjg=&txtid=&resultSearch=false&lastStrWhere=&keyword=&pagesize=50'
-
+        self.department_id_url='http://law.npc.gov.cn/FLFG/zdjg.action?_=1509374098898'
     # 导入数据集并随机获取一个User-Agent
     def random_user_agent(self):
         user_agent_list = []
@@ -54,6 +55,50 @@ class NpcLawSpider():
             'Referer': '',
         }
         return headers
+
+    ##already write the ids in to the json file
+    # def department_id(self):
+    #     url=self.department_id_url
+    #     headers=self.common_headers()
+    #     response=requests.get(url,headers=headers)
+    #     if response.status_code==200:
+    #         with open('department_id.json','w') as file:
+    #             file.write(response.text)
+
+    def read_department_id(self):
+        id_list=[]
+        with open("department_id.json","r") as file:
+            json_text= file.read()
+            department_id_dict=json.loads(json_text)
+            # print(department_id_dict)
+            for item in department_id_dict:
+                id=item["zdxid"]
+                id_list.append(id)
+
+        return id_list
+
+    def advanced_search_request_data(self,page):
+        data={
+            'bbrqbegin':'',
+            'bbrqend':'',
+            'bbwh':'',
+            'bmflid':'',
+            'bt':'',
+            'curPage':page,
+            'flfgnr':'',
+            'lastStrWhere': 'SFYX:(有效) ^ ZLSX:(01~02~03~04~05~06~08~09~10~11~12~23) ^ DWDMCODE:(3) ^ SFFB=Y ',
+            'pageCount':'133',
+            'pagesize':'50',
+            'resultSearch':'false',
+            'sxrqbegin':'',
+            'sxrqend':'',
+            'sxx':'有效',
+            'xldj':'',
+            'zdjg':'3',
+            'zlsxid':'',
+        }
+        return data
+
 
     def index_page(self):
         headers = self.common_headers()
@@ -349,11 +394,7 @@ class NpcLawSpider():
 
 if __name__== '__main__':
     a=NpcLawSpider()
-    html=a.index_page()
-    # print(html)
-    # a.parse_index_page_law(html)
-    result=a.parse_provinces(html)
-    print(result)
+    a.read_department_id()
 
 
 
